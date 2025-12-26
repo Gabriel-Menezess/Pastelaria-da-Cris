@@ -1,0 +1,1614 @@
+<?php
+require_once 'auth.php';
+
+// Verificar autenticação
+if (!verificarAuth()) {
+    header('Location: login.php');
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cardápio de Pasteis</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#27ae60">
+  <link rel="icon" type="image/png" href="photo_2025-12-25_23-38-23.jpg">
+  <style>
+    :root {
+      --bg-color: #f9f9f9;
+      --text-color: #000;
+      --card-bg: #fff;
+      --button-bg: #27ae60;
+      --input-bg: #fff;
+    }
+
+    [data-tema="escuro"] {
+      --bg-color: #121212;
+      --text-color: #f9f9f9;
+      --card-bg: #1e1e1e;
+      --button-bg: #2ecc71;
+      --input-bg: #2c2c2c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0 0 10px 0;
+      color: var(--button-bg);
+    }
+
+    .header p {
+      font-size: 16px;
+      margin: 0;
+      color: #666;
+    }
+
+    .search-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      margin: 20px auto;
+      max-width: 100%;
+      padding: 0 10px;
+    }
+
+    /* Linha que agrupa input + lupa + carrinho lado a lado */
+    .search-row {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 0 auto;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      display: block;
+      align-items: center;
+    }
+
+    #searchInput {
+      width: 100%;
+      max-width: 400px;
+      padding: 14px 44px 14px 16px; /* espaço apenas para a lupa */
+      border-radius: 25px;
+      border: 2px solid #ccc;
+      font-size: 16px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      outline: none;
+    }
+
+    #searchInput:focus {
+      border-color: var(--button-bg);
+      box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+    }
+
+    .lupa {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      color: #888;
+      pointer-events: none;
+    }
+
+    .carrinho-icon {
+      position: relative; /* fora do input */
+      background: linear-gradient(135deg, var(--button-bg), #2ecc71);
+      color: #fff;
+      cursor: pointer;
+      padding: 12px;
+      border-radius: 50%;
+      box-shadow: 0 6px 16px rgba(39,174,96,0.35);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      font-size: 24px;
+      border: 2px solid rgba(255,255,255,0.7);
+      z-index: 1;
+    }
+
+    .carrinho-icon:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 22px rgba(39,174,96,0.45);
+    }
+
+    .carrinho-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #e74c3c;
+      color: white;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      border: 2px solid var(--card-bg);
+    }
+
+    .categoria-produtos {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .categoria-produtos.ativo {
+      display: block;
+    }
+
+    .categoria-titulo {
+      text-align: center;
+      margin: 30px 0 20px 0;
+      color: var(--button-bg);
+    }
+
+    .categoria-titulo h2 {
+      margin: 0;
+      padding: 10px 0;
+      border-bottom: 3px solid var(--button-bg);
+      display: inline-block;
+      font-size: 24px;
+    }
+
+    .logo-pasteis {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .logo-imagem {
+      max-width: 400px;
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      transition: all 0.3s ease;
+    }
+
+    .logo-imagem:hover {
+      transform: scale(1.02);
+      box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+    }
+
+    .produtos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 0 10px;
+    }
+
+    .produto {
+      background: var(--card-bg);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .produto:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .produto h3 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      color: var(--text-color);
+    }
+
+    .produto img {
+      width: 100%;
+      max-width: 200px;
+      height: 150px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      object-fit: cover;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .produto .preco {
+      font-weight: bold;
+      margin-bottom: 15px;
+      display: block;
+      font-size: 20px;
+      color: var(--button-bg);
+    }
+
+    .produto .descricao {
+      margin-bottom: 20px;
+      color: #666;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .btn-adicionar {
+      background-color: var(--button-bg);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .btn-adicionar:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn-adicionar:active {
+      transform: translateY(0);
+    }
+
+    /* Modal do Carrinho */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-carrinho {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--button-bg);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--button-bg);
+      font-size: 24px;
+    }
+
+    .fechar-modal {
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+      padding: 5px;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .fechar-modal:hover {
+      color: var(--text-color);
+      background: rgba(0,0,0,0.1);
+    }
+
+    .item-carrinho {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 20px 10px;
+      margin: 15px 0;
+      background: var(--bg-color);
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .controles-acao {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-excluir {
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .btn-excluir:hover {
+      transform: scale(1.08);
+      background: #c0392b;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .dados-cliente {
+      margin-top: 20px;
+      background: var(--card-bg);
+      border: 1px solid rgba(0,0,0,0.05);
+      border-radius: 15px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .dados-cliente h3 {
+      margin: 0 0 12px 0;
+      color: var(--button-bg);
+      font-size: 18px;
+    }
+
+    .grupo-input {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .grupo-input label {
+      grid-column: span 2;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .grupo-input input[type="text"],
+    .grupo-input input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: var(--input-bg);
+      color: var(--text-color);
+      outline: none;
+    }
+
+    .grupo-input input[readonly] {
+      background: #f1f1f1;
+      color: #777;
+    }
+
+    .pagamento-container {
+      margin-top: 10px;
+    }
+
+    .pagamento-titulo {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: var(--text-color);
+      font-size: 14px;
+    }
+
+    .pagamento-opcoes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .pagamento-opcoes .opcao {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg-color);
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: var(--text-color);
+    }
+
+    .pagamento-opcoes .opcao:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .pagamento-opcoes input[type="radio"] {
+      accent-color: var(--button-bg);
+      width: 16px;
+      height: 16px;
+    }
+
+    .frete-info {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--text-color);
+      background: #eafaf0;
+      border-left: 4px solid var(--button-bg);
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .item-info {
+      flex: 1;
+    }
+
+    .item-info h4 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+      color: var(--text-color);
+      font-weight: bold;
+    }
+
+    .item-info p {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .item-preco {
+      font-weight: bold;
+      color: var(--button-bg);
+      margin: 0 0 10px 0;
+      min-width: 80px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .controles-quantidade {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn-quantidade {
+      background: var(--button-bg);
+      color: white;
+      border: none;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .btn-quantidade:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .quantidade-numero {
+      font-size: 18px;
+      font-weight: bold;
+      min-width: 30px;
+      text-align: center;
+      color: var(--text-color);
+    }
+
+    .carrinho-vazio {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .carrinho-vazio div {
+      font-size: 48px;
+      margin-bottom: 15px;
+      opacity: 0.5;
+    }
+
+    .carrinho-vazio h3 {
+      margin: 0 0 10px 0;
+      color: var(--text-color);
+    }
+
+    .total-carrinho {
+      margin-top: 25px;
+      padding: 20px;
+      background: var(--button-bg);
+      color: white;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .total-carrinho h3 {
+      margin: 0 0 15px 0;
+      font-size: 20px;
+    }
+
+    .total-valor {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .btn-finalizar {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 25px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .btn-finalizar:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    #botoesNavegacao {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 999;
+    }
+
+    #botoesNavegacao button {
+      background-color: var(--button-bg);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    #botoesNavegacao button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Responsividade para smartphones */
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .header p {
+        font-size: 14px;
+      }
+
+      .search-container {
+        gap: 12px;
+      }
+
+      .search-row { max-width: 100%; gap: 10px; }
+      .carrinho-icon { padding: 10px; font-size: 22px; }
+      .carrinho-badge { width: 24px; height: 24px; font-size: 12px; }
+
+      .categorias-container {
+        gap: 6px;
+      }
+
+      .categoria-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 100px;
+      }
+
+      .logo-imagem {
+        max-width: 350px;
+        height: 180px;
+      }
+
+      .produtos-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 0 5px;
+      }
+
+      .produto {
+        padding: 15px;
+      }
+
+      .produto img {
+        max-width: 180px;
+        height: 130px;
+      }
+
+      .produto h3 {
+        font-size: 16px;
+      }
+
+      .produto .descricao {
+        font-size: 13px;
+      }
+
+      .produto .preco {
+        font-size: 18px;
+      }
+
+      .btn-adicionar {
+        padding: 10px 20px;
+        font-size: 13px;
+      }
+
+      .modal-carrinho {
+        width: 95%;
+        padding: 20px;
+        margin: 10px;
+      }
+
+      .modal-header h2 {
+        font-size: 20px;
+      }
+
+      .item-carrinho {
+        flex-direction: column;
+        text-align: center;
+        padding: 12px;
+      }
+
+      .item-carrinho img {
+        margin: 0 0 10px 0;
+        width: 80px;
+        height: 80px;
+      }
+
+      .item-info h4 {
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .item-info p {
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+
+      .item-preco {
+        margin: 8px 0;
+        font-size: 15px;
+      }
+
+      .controles-quantidade {
+        margin-top: 8px;
+        gap: 10px;
+      }
+
+      .btn-quantidade {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .quantidade-numero {
+        font-size: 16px;
+        min-width: 25px;
+      }
+
+      .total-carrinho {
+        padding: 15px;
+        margin-top: 20px;
+      }
+
+      .total-carrinho h3 {
+        font-size: 18px;
+      }
+
+      .total-valor {
+        font-size: 24px;
+        margin-bottom: 15px;
+      }
+
+      .btn-finalizar {
+        padding: 12px 24px;
+        font-size: 16px;
+      }
+
+      #botoesNavegacao {
+        right: 15px;
+        bottom: 15px;
+        gap: 8px;
+      }
+
+      #botoesNavegacao button {
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+      }
+
+      .header p {
+        font-size: 13px;
+      }
+
+      .search-container {
+        gap: 10px;
+      }
+
+      .search-row { gap: 8px; }
+      .carrinho-icon { padding: 9px; font-size: 20px; }
+      .carrinho-badge { width: 22px; height: 22px; font-size: 12px; }
+
+      .categorias-container {
+        gap: 5px;
+      }
+
+      .categoria-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 90px;
+      }
+
+      .logo-imagem {
+        max-width: 300px;
+        height: 150px;
+      }
+
+      .produtos-grid {
+        gap: 12px;
+        padding: 0;
+      }
+
+      .produto {
+        padding: 12px;
+      }
+
+      .produto img {
+        max-width: 150px;
+        height: 110px;
+      }
+
+      .produto h3 {
+        font-size: 15px;
+      }
+
+      .produto .descricao {
+        font-size: 12px;
+      }
+
+      .produto .preco {
+        font-size: 17px;
+      }
+
+      .btn-adicionar {
+        padding: 8px 16px;
+        font-size: 12px;
+      }
+
+      .categoria-titulo h2 {
+        font-size: 20px;
+      }
+
+      .modal-carrinho {
+        width: 98%;
+        padding: 15px;
+        margin: 5px;
+      }
+
+      .modal-header h2 {
+        font-size: 18px;
+      }
+
+      .item-carrinho {
+        padding: 10px;
+      }
+
+      .item-carrinho img {
+        width: 70px;
+        height: 70px;
+      }
+
+      .item-info h4 {
+        font-size: 14px;
+      }
+
+      .item-info p {
+        font-size: 11px;
+      }
+
+      .controles-quantidade {
+        gap: 8px;
+      }
+
+      .btn-quantidade {
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+      }
+
+      .quantidade-numero {
+        font-size: 15px;
+        min-width: 22px;
+      }
+
+      .total-carrinho {
+        padding: 12px;
+      }
+
+      .total-carrinho h3 {
+        font-size: 16px;
+      }
+
+      .total-valor {
+        font-size: 22px;
+        margin-bottom: 12px;
+      }
+
+      .btn-finalizar {
+        padding: 10px 20px;
+        font-size: 15px;
+      }
+
+      #botoesNavegacao {
+        right: 10px;
+        bottom: 10px;
+      }
+
+      #botoesNavegacao button {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .grupo-input { grid-template-columns: 1fr; }
+      .grupo-input label { grid-column: span 1; }
+      .pagamento-opcoes { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 360px) {
+      .search-row { gap: 8px; }
+      .carrinho-icon { padding: 8px; font-size: 18px; }
+      .carrinho-badge { width: 20px; height: 20px; font-size: 11px; }
+      .categorias-container {
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .categoria-btn {
+        width: 100%;
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      .logo-imagem {
+        max-width: 250px;
+        height: 125px;
+      }
+
+      .produto img {
+        max-width: 120px;
+        height: 90px;
+      }
+
+      .produto h3 {
+        font-size: 14px;
+      }
+
+      .produto .descricao {
+        font-size: 11px;
+      }
+
+      .produto .preco {
+        font-size: 16px;
+      }
+
+      .btn-adicionar {
+        padding: 6px 12px;
+        font-size: 11px;
+      }
+
+      .modal-carrinho {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        max-height: 100vh;
+      }
+
+      .item-carrinho img {
+        width: 60px;
+        height: 60px;
+      }
+
+      .item-info h4 {
+        font-size: 13px;
+      }
+
+      .item-info p {
+        font-size: 10px;
+      }
+
+      .controles-quantidade {
+        gap: 6px;
+      }
+
+      .btn-quantidade {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+      }
+
+      .quantidade-numero {
+        font-size: 14px;
+        min-width: 20px;
+      }
+
+      .total-carrinho {
+        padding: 10px;
+      }
+
+      .total-carrinho h3 {
+        font-size: 15px;
+      }
+
+      .total-valor {
+        font-size: 20px;
+        margin-bottom: 10px;
+      }
+
+      .btn-finalizar {
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+    }
+
+    .categorias-container {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .categoria-btn {
+      background: var(--card-bg);
+      color: var(--text-color);
+      border: 2px solid var(--button-bg);
+      padding: 10px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .categoria-btn:hover {
+      background: var(--button-bg);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .categoria-btn.ativo {
+      background: var(--button-bg);
+      color: white;
+    }
+
+    .item-carrinho img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin: 0 0 10px 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🥟 Cardápio 🥟 </h1>
+    <div class="logo-pasteis">
+      <img src="./photo_2025-12-25_23-38-23.jpg" alt="PASTÉS DA CRIS" class="logo-imagem">
+    </div>
+    <b><p>Descubra os sabores únicos da nossa casa de pastéis artesanais, Feitos com ingredientes frescos e receitas tradicionais, nossos pastéis são perfeitos para qualquer ocasião.</p></b>  
+    <br>Pague somente ao receber seus pedidos — simples, seguro e prático.</br>
+    <br>"Após adicionar os itens, clique no carrinho e finalize seu pedido."</br>
+  </div>
+
+  <div class="search-container">
+    <div class="search-row">
+      <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="Pesquisar no cardápio...">
+        <span class="lupa">🔍</span>
+      </div>
+      <div class="carrinho-icon" onclick="abrirCarrinho()" aria-label="Abrir carrinho" title="Abrir carrinho">
+        🛒
+        <span class="carrinho-badge" id="carrinhoBadge">0</span>
+      </div>
+    </div>
+    <div class="categorias-container">
+      <button class="categoria-btn ativo" onclick="mostrarCategoria('pasteis')">🥟 Pastéis</button>
+      <button class="categoria-btn" onclick="mostrarCategoria('acompanhamentos')">🍟 Acompanhamentos</button>
+      <button class="categoria-btn" onclick="mostrarCategoria('bebidas')">🥤 Bebidas</button>
+      <button class="categoria-btn" onclick="mostrarCategoria('bolos')">🎂 Bolos</button>
+      <button class="categoria-btn" onclick="mostrarCategoria('acai')">🍧 Açaí</button>
+      <button class="categoria-btn" onclick="mostrarCategoria('lanches')">🍔 Lanches</button>
+    </div>
+  </div>
+
+  <!-- Categoria Pasteis -->
+  <div id="categoria-pasteis" class="categoria-produtos ativo">
+    <div class="categoria-titulo">
+      <h2>🥟 Nossos Pastéis</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-pasteis"></div>
+  </div>
+
+  <!-- Categoria Acompanhamentos -->
+  <div id="categoria-acompanhamentos" class="categoria-produtos">
+    <div class="categoria-titulo">
+      <h2>🍟 Acompanhamentos</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-acompanhamentos"></div>
+  </div>
+
+  <!-- Categoria Bebidas -->
+  <div id="categoria-bebidas" class="categoria-produtos">
+    <div class="categoria-titulo">
+      <h2>🥤 Bebidas</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-bebidas"></div>
+  </div>
+
+  <!-- Categoria Bolos -->
+  <div id="categoria-bolos" class="categoria-produtos">
+    <div class="categoria-titulo">
+      <h2>🎂 Bolos</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-bolos"></div>
+  </div>
+
+  <!-- Categoria Açaí -->
+  <div id="categoria-acai" class="categoria-produtos">
+    <div class="categoria-titulo">
+      <h2>🍧 Açaí</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-acai"></div>
+  </div>
+
+  <!-- Categoria Lanches -->
+  <div id="categoria-lanches" class="categoria-produtos">
+    <div class="categoria-titulo">
+      <h2>🍔 Lanches</h2>
+    </div>
+    <div class="produtos-grid" id="cardapio-lanches"></div>
+  </div>
+
+  <!-- Botões de navegação -->
+  <div id="botoesNavegacao">
+    <button onclick="voltarAoTopo()">🔝 Início</button>
+    <button onclick="alternarTema()">🌓 Modo Escuro</button>
+  </div>
+
+  <!-- Modal do Carrinho -->
+  <div class="modal-overlay" id="modalCarrinho">
+    <div class="modal-carrinho">
+      <div class="modal-header">
+        <h2>🛒 Seu Carrinho</h2>
+        <button class="fechar-modal" onclick="fecharCarrinho()">&times;</button>
+      </div>
+      
+      <div id="itensCarrinho">
+        <!-- Itens serão inseridos aqui dinamicamente -->
+      </div>
+      
+      <div id="carrinhoVazio" class="carrinho-vazio" style="display: none;">
+        <div>🛒</div>
+        <h3>Seu carrinho está vazio</h3>
+        <p>Adicione alguns produtos deliciosos para começar!</p>
+      </div>
+
+      <div id="dadosCliente" class="dados-cliente" style="display: none;">
+        <h3>Dados para entrega</h3>
+        <div class="grupo-input">
+          <label for="clienteCidade">Cidade</label>
+          <input type="text" id="clienteCidade" value="Guarujá" readonly>
+
+          <label for="clienteNome">Nome</label>
+          <input type="text" id="clienteNome" placeholder="Seu nome completo" autocomplete="name">
+
+          <label for="clienteEndereco">Endereço</label>
+          <input type="text" id="clienteEndereco" placeholder="Rua/Avenida e complemento" autocomplete="address-line1">
+
+          <label for="clienteBairro">Bairro</label>
+          <input type="text" id="clienteBairro" placeholder="Seu bairro" autocomplete="address-level2">
+
+          <label for="clienteNumero">Número</label>
+          <input type="number" id="clienteNumero" placeholder="Nº da casa/apto" inputmode="numeric">
+
+          <label for="clienteReferencia">Ponto de referência</label>
+          <input type="text" id="clienteReferencia" placeholder="Perto de... (opcional)">
+        </div>
+
+        <div class="pagamento-container">
+          <span class="pagamento-titulo">Forma de pagamento na entrega!</span>
+          <div class="pagamento-opcoes">
+            <label class="opcao"><input type="radio" name="pagamento" value="PIX" checked> PIX</label>
+            <label class="opcao"><input type="radio" name="pagamento" value="Cartão de crédito"> Cartão de crédito</label>
+            <label class="opcao"><input type="radio" name="pagamento" value="Dinheiro"> Dinheiro</label>
+          </div>
+          <p class="frete-info">Pedidos acima de R$ 50,00 têm entrega gratuita (sem taxa de entrega).</p>
+        </div>
+      </div>
+      
+      <div id="totalCarrinho" class="total-carrinho" style="display: none;">
+        <h3>Total do Pedido</h3>
+        <div class="total-valor" id="valorTotal">R$ 0,00</div>
+        <button class="btn-finalizar" onclick="finalizarPedido()">✅ Finalizar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log("Service Worker registrado."))
+        .catch(err => console.error("Erro ao registrar SW:", err));
+    }
+
+    // Produtos por categoria
+    const produtos = {
+      pasteis: [
+        { nome: "PASTEL DE CARNE", descricao: "Pastel tradicional recheado com carne bovina moída, temperada com cebola, alho e especiarias. Massa crocante e recheio suculento.", preco: 8.50, imagem: "./img/f73c4138f7620c232e4053831bd0c1f9.jpg" },
+        { nome: "PASTEL DE FRANGO", descricao: "Delicioso pastel recheado com frango desfiado, temperado com ervas finas e um toque especial de catupiry. Massa dourada e crocante.", preco: 8.50, imagem: "./img/frango.jpg" },
+        { nome: "PASTEL DE QUEIJO", descricao: "Pastel clássico recheado com queijo derretido. Massa fina e crocante que revela o sabor cremoso do queijo em cada mordida.", preco: 7.50, imagem: "./img/queijo bar-o-rei-do-pastel.jpg" },
+        { nome: "PASTEL DE CALABRESA", descricao: "Pastel recheado com calabresa defumada e cebola caramelizada. Sabor intenso e marcante, perfeito para quem gosta de sabores fortes.", preco: 9.00, imagem: "./img/calabresa.jpeg" },
+        //{ nome: "PASTEL DE PALMITO", descricao: "Pastel vegetariano recheado com palmito macio e cremoso. Opção leve e saborosa para quem prefere sabores mais suaves.", preco: 8.00, imagem: "./img/palmito.jpg" },
+        //{ nome: "PASTEL DE BACON", descricao: "Pastel premium recheado com bacon crocante e queijo derretido. Combinação irresistível de sabores salgados e crocantes.", preco: 9.50, imagem: "./img/bacon .webp" },
+        //{ nome: "PASTEL DE CAMARÃO", descricao: "Pastel especial recheado com camarões frescos e temperos da casa. Sabor do mar em uma massa crocante e dourada.", preco: 12.00, imagem: "./img/camarao-com-queijo-portal-minha-receita-1.jpg" },
+        { nome: "PASTEL DE BRÓCOLIS", descricao: "Pastel vegetariano recheado com brócolis frescos e queijo branco. Opção saudável e saborosa para toda a família.", preco: 7.50, imagem: "./img/brocolis.jpg" },
+        { nome: "PASTEL DE 4 QUEIJOS", descricao: "Pastel gourmet recheado com uma seleção especial de quatro queijos diferentes. Experiência única de sabores e texturas.", preco: 10.50, imagem: "./img/4 queijos.jpeg" },
+        { nome: "PASTEL DE FRANGO COM CATUPIRY", descricao: "Pastel cremoso recheado com frango desfiado e catupiry derretido. Textura suave e sabor inesquecível.", preco: 9.00, imagem: "./img/frango catupiry.jpg" },
+        { nome: "PASTEL DE PIZZA", descricao: "Pastel especial recheado com molho de tomate, queijo derretido, presunto e outros ingredientes típicos da pizza. Sabor italiano em formato de pastel.", preco: 9.50, imagem: "./img/pizza.avif" }
+      ],
+      
+      acompanhamentos: [
+        { nome: "BATATA FRITA", descricao: "Batatas fritas crocantes e douradas, temperadas com sal e ervas finas. Perfeitas para acompanhar qualquer refeição.", preco: 12.00, imagem: "./img/Batata-Frita-na-Air-Fryer.webp" },
+        //{ nome: "ONION RINGS", descricao: "Anéis de cebola empanados e fritos até ficarem dourados e crocantes. Sabor irresistível e textura perfeita.", preco: 10.50, imagem: "./img/onion-rings.jpg" },
+        //{ nome: "MANDIOCA FRITA", descricao: "Mandioca frita crocante por fora e macia por dentro. Acompanhamento tradicional brasileiro.", preco: 8.50, imagem: "./img/Mandioca-Frita-Crocante.jpg" },
+        //{ nome: "POLENTA FRITA", descricao: "Polenta frita em cubos, crocante por fora e cremosa por dentro. Sabor autêntico da culinária italiana.", preco: 7.50, imagem: "./img/POLENTA frinta.jpeg" },
+        { nome: "FAROFA", descricao: "Farofa tradicional brasileira feita com farinha de mandioca, bacon e temperos especiais.", preco: 6.00, imagem: "./img/FAROFA.jpeg" },
+        { nome: "VINAGRETE", descricao: "Vinagrete fresco com tomate, cebola, pimentão e azeite. Acompanhamento leve e saboroso.", preco: 5.50, imagem: "./img/vinagrete_para_20_pessoas_9778_orig.jpg" },
+        { nome: "MAIONESE CASEIRA", descricao: "Maionese caseira cremosa e saborosa, feita com ingredientes frescos e selecionados.", preco: 4.50, imagem: "./img/maionese molho casiro .jpg" },
+        { nome: "KETCHUP ", descricao: "Ketchup artesanal com tomates selecionados e temperos especiais. Sabor único e natural.", preco: 4.00, imagem: "./img/ketchup.jpg" },
+        { nome: "MOSTARDA", descricao: "Mostarda tradicional com sabor picante e aromático. Perfeita para realçar o sabor dos pasteis.", preco: 3.50, imagem: "./img/MOSTARDA.webp" },
+        //{ nome: "MOLHO TÁRTARO", descricao: "Molho tártaro cremoso com picles, cebola e ervas finas. Acompanhamento gourmet para pasteis especiais.", preco: 5.00, imagem: "./img/molho-tartaro.jpg" }
+      ],
+      
+      bebidas: [
+        { nome: "REFRIGERANTE COCA COLA", descricao: "Refrigerante coca cola gelado de 350ml e refrescante. Perfeito para acompanhar os pasteis.", preco: 6.00, imagem: "./img/coca cola 350ml.webp" },
+        { nome: "REFRIGERANTE FANTA LARANJA", descricao: "Refrigerante Fanta laranja de 350ml com sabor cítrico e refrescante. Ideal para dias quentes.", preco: 6.00, imagem: "./img/fanta-laranja 350ml.png" },
+        { nome: "SUCO DE CAIXA DEL VALLE LARANJA", descricao: "Suco de Néctar Del Valle Kapo Laranja Tetra Pak 200ml.", preco: 8.00, imagem: "./img/suco de caixa valle.webp" },
+        { nome: "REFRIGERANTE COCA COLA 0", descricao: "Refrigerante coca cola zero gelado de 350ml e refrescante. Perfeito para acompanhar os pasteis.", preco: 7.50, imagem: "./img/Refrigerante-COCA-COLA-Zero-Acucar-Lata-350ml.webp" },
+        { nome: "ÁGUA MINERAL", descricao: "Água Mineral Crystal sem gás, pet, com 500mL e pura, ideal para manter-se hidratado.", preco: 4.00, imagem: "./img/agua-mineral-crystal-sem-gas-garrafa-1-unidade-com-500ml_17652.webp" },
+        { nome: "Refrigerante Sukita Uva", descricao: "Refrigerante Sukita Uva Lata 350ml.", preco: 8.50, imagem: "./img/sukita uva 350ml.webp" },
+        { nome: "Chá Natural Matte Leão", descricao: "Chá Natural Matte Leão 450ml.", preco: 6.50, imagem: "./img/cha-natural-matte-leao-450ml.webp" },
+        { nome: "Refrigerante Pepsi Original", descricao: "Refrigerante Pepsi Original Lata 350ml.", preco: 12.00, imagem: "./img/pepsi-lata-vikact.webp" },
+       // { nome: "MILKSHAKE MORANGO", descricao: "Milkshake cremoso de morango, sabor frutado e refrescante.", preco: 12.00, imagem: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" },
+        //{ nome: "CAFÉ EXPRESSO", descricao: "Café expresso forte e aromático, perfeito para finalizar a refeição.", preco: 5.00, imagem: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" }
+      ],
+      
+      bolos: [
+       // { nome: "BOLO DE CHOCOLATE", descricao: "Bolo caseiro de chocolate com cobertura cremosa e raspas de chocolate. Perfeito para sobremesas especiais.", preco: 15.00, imagem: "./img/bolo-chocolate.jpg" },
+       // { nome: "BOLO DE CENOURA", descricao: "Bolo tradicional de cenoura com cobertura de chocolate. Macio, úmido e delicioso.", preco: 12.00, imagem: "./img/bolo-cenoura.jpg" },
+       // { nome: "BOLO DE LIMÃO", descricao: "Bolo cítrico de limão com calda de limão. Refrescante e ideal para dias quentes.", preco: 13.50, imagem: "./img/bolo-limao.jpg" },
+       // { nome: "BOLO DE BRIGADEIRO", descricao: "Bolo de chocolate com brigadeiro cremoso por cima. Sobremesa brasileira irresistível.", preco: 16.00, imagem: "./img/bolo-brigadeiro.jpg" },
+       //{ nome: "BOLO DE POTE CHOCOLATE", descricao: "Bolo de pote tradicional de chocolate, macio e fofinho. Perfeito para café da tarde.", preco: 8.50, imagem: "./img/bolo-bote-chocolate.jpg" },
+        //{ nome: "BOLO DE POTE CENOURA", descricao: "Bolo de pote de cenoura com cobertura de chocolate. Sabor tradicional e caseiro.", preco: 8.00, imagem: "./img/bolo-bote-cenoura.jpg" },
+        //{ nome: "BOLO DE POTE LARANJA", descricao: "Bolo de pote cítrico de laranja. Refrescante e ideal para acompanhar chás.", preco: 7.50, imagem: "./img/bolo-bote-laranja.jpg" },
+        //{ nome: "FATIA POLO CHOCOLATE", descricao: "Fatia generosa de bolo de chocolate com cobertura cremosa. Porção individual perfeita.", preco: 6.50, imagem: "./img/fatia-bolo-chocolate.jpg" },
+        //{ nome: "FATIA POLO CENOURA", descricao: "Fatia de bolo de cenoura com cobertura de chocolate. Macio e delicioso.", preco: 6.00, imagem: "./img/fatia-bolo-cenoura.jpg" },
+        //{ nome: "FATIA POLO LIMÃO", descricao: "Fatia de bolo de limão com calda cítrica. Refrescante e leve.", preco: 6.50, imagem: "./img/fatia-bolo-limao.jpg" },
+        //{ nome: "FATIA POLO BRIGADEIRO", descricao: "Fatia de bolo de chocolate com brigadeiro cremoso. Sobremesa brasileira em porção individual.", preco: 7.00, imagem: "./img/fatia-bolo-brigadeiro.jpg" },
+        //{ nome: "MOUSSE DE LIMÃO", descricao: "Mousse de limão cremoso e refrescante. Sobremesa leve e saborosa.", preco: 8.50, imagem: "./img/mousse-limao.jpg" },
+        //{ nome: "MOUSSE DE MORANGO", descricao: "Mousse de morango cremoso e frutado. Sobremesa colorida e deliciosa.", preco: 8.50, imagem: "./img/mousse-morango.jpg" },
+        //{ nome: "MOUSSE DE CHOCOLATE", descricao: "Mousse de chocolate cremoso e rico. Sobremesa clássica e irresistível.", preco: 9.00, imagem: "./img/mousse-chocolate.jpg" },
+        //{ nome: "MOUSSE DE MARACUJÁ", descricao: "Mousse de maracujá cremoso e exótico. Sabor tropical único.", preco: 8.50, imagem: "./img/mousse-maracuja.jpg" },
+        //{ nome: "PUDIM DE LEITE", descricao: "Pudim de leite condensado tradicional com calda de caramelo. Sobremesa brasileira clássica.", preco: 7.50, imagem: "./img/pudim-leite.jpg" },
+        //{ nome: "PUDIM DE CHOCOLATE", descricao: "Pudim de chocolate cremoso e rico. Sobremesa elegante e saborosa.", preco: 8.00, imagem: "./img/pudim-chocolate.jpg" },
+       // { nome: "BOLO DE MILHO", descricao: "Bolo de milho caseiro tradicional. Macio e saboroso, perfeito para café da tarde.", preco: 10.00, imagem: "./img/bolo-milho.jpg" },
+        //{ nome: "BOLO DE FUBÁ", descricao: "Bolo de fubá tradicional brasileiro. Sabor autêntico da culinária caipira.", preco: 9.50, imagem: "./img/bolo-fuba.jpg" },
+        //{ nome: "BOLO DE LARANJA", descricao: "Bolo de laranja cítrico e refrescante. Ideal para acompanhar chás e cafés.", preco: 11.00, imagem: "./img/bolo-laranja.jpg" },
+       // { nome: "BOLO DE COCO", descricao: "Bolo de coco tradicional com raspas de coco. Sabor tropical e delicioso.", preco: 12.50, imagem: "./img/bolo-coco.jpg" },
+        //{ nome: "BOLO DE MAÇÃ", descricao: "Bolo de maçã com canela e nozes. Sabor clássico e reconfortante.", preco: 13.00, imagem: "./img/bolo-maca.jpg" },
+        //{ nome: "BOLO DE BANANA", descricao: "Bolo de banana com aveia e canela. Opção saudável e saborosa.", preco: 10.50, imagem: "./img/bolo-banana.jpg" },
+       // { nome: "BOLO DE ABACAXI", descricao: "Bolo de abacaxi tropical e refrescante. Sabor único e exótico.", preco: 11.50, imagem: "./img/bolo-abacaxi.jpg" },
+        //{ nome: "BOLO DE GOIABA", descricao: "Bolo de goiaba tradicional brasileiro. Sabor frutado e autêntico.", preco: 12.00, imagem: "./img/bolo-goiaba.jpg" },
+       // { nome: "BOLO DE MANDIOCA", descricao: "Bolo de mandioca caseiro tradicional. Macio e saboroso da culinária brasileira.", preco: 9.00, imagem: "./img/bolo-mandioca.jpg" },
+       // { nome: "BOLO DE AIPIM", descricao: "Bolo de aipim cremoso e tradicional. Sabor autêntico do Nordeste brasileiro.", preco: 9.50, imagem: "./img/bolo-aipim.jpg" }
+      ],
+      
+      acai: [
+        //{ nome: "AÇAÍ 300ML", descricao: "Açaí cremoso de 300ml com granola, banana e mel. Refrescante e energético, perfeito para qualquer hora do dia.", preco: 12.00, imagem: "./img/acai-300ml.jpg" },
+        //{ nome: "AÇAÍ 500ML", descricao: "Açaí cremoso de 500ml com granola, banana, morango e mel. Porção generosa e saborosa.", preco: 16.00, imagem: "./img/acai-500ml.jpg" },
+        //{ nome: "AÇAÍ 700ML", descricao: "Açaí cremoso de 700ml com granola, banana, morango, leite condensado e mel. Porção família deliciosa.", preco: 20.00, imagem: "./img/acai-700ml.jpg" },
+        //{ nome: "AÇAÍ COM FRUTAS 300ML", descricao: "Açaí de 300ml com mix de frutas frescas (banana, morango, kiwi), granola e mel. Combinação perfeita de sabores.", preco: 14.00, imagem: "./img/acai-frutas-300ml.jpg" },
+        //{ nome: "AÇAÍ COM FRUTAS 500ML", descricao: "Açaí de 500ml com mix de frutas frescas (banana, morango, kiwi, uva), granola e mel. Sabor tropical único.", preco: 18.00, imagem: "./img/acai-frutas-500ml.jpg" },
+        //{ nome: "AÇAÍ COM PAÇOCA 300ML", descricao: "Açaí de 300ml com paçoca triturada, banana, granola e leite condensado. Sabor tradicional brasileiro.", preco: 13.50, imagem: "./img/acai-pacoca-300ml.jpg" },
+        //{ nome: "AÇAÍ COM PAÇOCA 500ML", descricao: "Açaí de 500ml com paçoca triturada, banana, granola e leite condensado. Porção generosa com sabor especial.", preco: 17.50, imagem: "./img/acai-pacoca-500ml.jpg" },
+        //{ nome: "AÇAÍ COM NUTELLA 300ML", descricao: "Açaí de 300ml com Nutella, banana, granola e morango. Combinação irresistível de sabores.", preco: 15.00, imagem: "./img/acai-nutella-300ml.jpg" },
+        //{ nome: "AÇAÍ COM NUTELLA 500ML", descricao: "Açaí de 500ml com Nutella, banana, granola, morango e leite condensado. Indulgência cremosa e deliciosa.", preco: 19.00, imagem: "./img/acai-nutella-500ml.jpg" },
+        //{ nome: "AÇAÍ COM LEITE CONDENSADO 300ML", descricao: "Açaí de 300ml com leite condensado, granola e banana. Doce e cremoso, perfeito para adoçar o dia.", preco: 13.00, imagem: "./img/acai-leite-condensado-300ml.jpg" },
+        //{ nome: "AÇAÍ COM LEITE CONDENSADO 500ML", descricao: "Açaí de 500ml com leite condensado, granola, banana e morango. Porção generosa e doce.", preco: 17.00, imagem: "./img/acai-leite-condensado-500ml.jpg" },
+        //{ nome: "AÇAÍ COMPLETO 500ML", descricao: "Açaí de 500ml completo com todas as frutas, granola, leite condensado, paçoca e mel. A experiência completa do açaí.", preco: 20.00, imagem: "./img/acai-completo-500ml.jpg" }
+      ],
+      
+      lanches: [
+        //{ nome: "X-BURGUER", descricao: "Hambúrguer artesanal com carne bovina, queijo, alface, tomate, cebola e molho especial. Pão macio e fresquinho.", preco: 15.00, imagem: "./img/x-burguer.jpg" },
+        //{ nome: "X-SALADA", descricao: "Hambúrguer artesanal com carne bovina, queijo, alface, tomate, cebola, picles e molho especial. Equilíbrio perfeito de sabores.", preco: 16.00, imagem: "./img/x-salada.jpg" },
+        //{ nome: "X-BACON", descricao: "Hambúrguer artesanal com carne bovina, queijo, bacon crocante, alface, tomate e molho especial. Sabor intenso e irresistível.", preco: 18.00, imagem: "./img/x-bacon.jpg" },
+        //{ nome: "X-EGG", descricao: "Hambúrguer artesanal com carne bovina, queijo, ovo frito, alface, tomate e molho especial. Combinação clássica e deliciosa.", preco: 17.00, imagem: "./img/x-egg.jpg" },
+        //{ nome: "X-TUDO", descricao: "Hambúrguer completo com carne bovina, queijo, bacon, ovo, presunto, alface, tomate, cebola e molho especial. O lanche completo!", preco: 22.00, imagem: "./img/x-tudo.jpg" },
+        //{ nome: "X-FRANGO", descricao: "Hambúrguer com frango grelhado, queijo, alface, tomate e molho especial. Opção leve e saborosa.", preco: 16.50, imagem: "./img/x-frango.jpg" },
+        //{ nome: "X-CALABRESA", descricao: "Hambúrguer com calabresa fatiada, queijo, cebola, alface, tomate e molho especial. Sabor marcante e tradicional.", preco: 17.50, imagem: "./img/x-calabresa.jpg" },
+        //{ nome: "X-BURGUER DUPLO", descricao: "Hambúrguer duplo com duas carnes bovinas, dois queijos, alface, tomate, cebola e molho especial. Porção generosa e suculenta.", preco: 20.00, imagem: "./img/x-burguer-duplo.jpg" },
+        //{ nome: "X-BACON DUPLO", descricao: "Hambúrguer duplo com duas carnes, dois queijos, bacon crocante, alface, tomate e molho especial. Indulgência máxima.", preco: 23.00, imagem: "./img/x-bacon-duplo.jpg" },
+        //{ nome: "HOT DOG SIMPLES", descricao: "Cachorro-quente com salsicha, molho de tomate, maionese e batata palha. Clássico e delicioso.", preco: 10.00, imagem: "./img/hot-dog-simples.jpg" },
+        //{ nome: "HOT DOG COMPLETO", descricao: "Cachorro-quente completo com salsicha, molho de tomate, maionese, mostarda, ketchup, batata palha, milho e ervilha. O completo tradicional.", preco: 12.00, imagem: "./img/hot-dog-completo.jpg" },
+        //{ nome: "HOT DOG ESPECIAL", descricao: "Cachorro-quente especial com salsicha, queijo, bacon, ovo, molho de tomate, maionese e batata palha. Versão premium do clássico.", preco: 15.00, imagem: "./img/hot-dog-especial.jpg" }
+      ]
+    };
+
+    // Carrinho de compras
+    let carrinho = JSON.parse(localStorage.getItem('carrinho')) || {};
+    let categoriaAtiva = 'pasteis';
+
+    function mostrarCategoria(categoria) {
+      // Remove ativo de todos os botões e categorias
+      document.querySelectorAll('.categoria-btn').forEach(btn => btn.classList.remove('ativo'));
+      document.querySelectorAll('.categoria-produtos').forEach(cat => cat.classList.remove('ativo'));
+      
+      // Adiciona ativo ao botão e categoria selecionados
+      event.target.classList.add('ativo');
+      document.getElementById(`categoria-${categoria}`).classList.add('ativo');
+      
+      categoriaAtiva = categoria;
+    }
+
+    function renderizarCardapio(categoria) {
+      const container = document.getElementById(`cardapio-${categoria}`);
+      container.innerHTML = '';
+      
+      produtos[categoria].forEach(prod => {
+        const div = document.createElement("div");
+        div.className = "produto";
+        
+        div.innerHTML = `
+          <img src="${prod.imagem}" alt="${prod.nome}">
+          <h3>${prod.nome}</h3>
+          <p class="descricao">${prod.descricao}</p>
+          <span class="preco">R$ ${prod.preco.toFixed(2)}</span>
+          <button class="btn-adicionar" onclick="adicionarAoCarrinho('${prod.nome}', '${categoria}')">
+            ➕ Adicionar ao Carrinho
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function adicionarAoCarrinho(nomeProduto, categoria) {
+      let produto = null;
+      if (categoria && produtos[categoria]) {
+        produto = produtos[categoria].find(p => p.nome === nomeProduto);
+      }
+      if (!produto) {
+        // Busca em todas as categorias pelo nome
+        for (const cat in produtos) {
+          const achado = produtos[cat].find(p => p.nome === nomeProduto);
+          if (achado) { produto = achado; break; }
+        }
+      }
+      if (!produto) { console.warn('Produto não encontrado:', nomeProduto); return; }
+      
+      if (carrinho[nomeProduto]) {
+        carrinho[nomeProduto].quantidade++;
+      } else {
+        carrinho[nomeProduto] = {
+          nome: produto.nome,
+          descricao: produto.descricao,
+          preco: produto.preco,
+          imagem: produto.imagem,
+          quantidade: 1
+        };
+      }
+      
+      salvarCarrinho();
+      atualizarBadgeCarrinho();
+      // Se o modal estiver aberto, re-renderiza para refletir imediatamente
+      const modal = document.getElementById('modalCarrinho');
+      if (modal && modal.style.display === 'flex') {
+        renderizarCarrinho();
+      }
+      
+      // Feedback visual
+      const btn = event && event.target ? event.target : null;
+      if (btn) {
+        const textoOriginal = btn.textContent;
+        btn.textContent = '✅ Adicionado!';
+        btn.style.background = '#27ae60';
+        setTimeout(() => {
+          btn.textContent = textoOriginal;
+          btn.style.background = '';
+        }, 1000);
+      }
+    }
+
+    function removerDoCarrinho(nomeProduto) {
+      if (carrinho[nomeProduto]) {
+        if (carrinho[nomeProduto].quantidade > 1) {
+          carrinho[nomeProduto].quantidade--;
+        } else {
+          delete carrinho[nomeProduto];
+        }
+        salvarCarrinho();
+        atualizarBadgeCarrinho();
+        renderizarCarrinho();
+      }
+    }
+
+    function excluirDoCarrinho(nomeProduto) {
+      if (carrinho[nomeProduto]) {
+        delete carrinho[nomeProduto];
+        salvarCarrinho();
+        atualizarBadgeCarrinho();
+        renderizarCarrinho();
+      }
+    }
+
+    function salvarCarrinho() {
+      localStorage.setItem('carrinho', JSON.stringify(carrinho));
+    }
+
+    function atualizarBadgeCarrinho() {
+      const totalItens = Object.values(carrinho).reduce((total, item) => total + item.quantidade, 0);
+      document.getElementById('carrinhoBadge').textContent = totalItens;
+    }
+
+    function abrirCarrinho() {
+      document.getElementById('modalCarrinho').style.display = 'flex';
+      renderizarCarrinho();
+    }
+
+    function fecharCarrinho() {
+      document.getElementById('modalCarrinho').style.display = 'none';
+    }
+
+    function renderizarCarrinho() {
+      const container = document.getElementById('itensCarrinho');
+      const carrinhoVazio = document.getElementById('carrinhoVazio');
+      const totalCarrinho = document.getElementById('totalCarrinho');
+      const dadosCliente = document.getElementById('dadosCliente');
+      
+      if (Object.keys(carrinho).length === 0) {
+        container.innerHTML = '';
+        carrinhoVazio.style.display = 'block';
+        totalCarrinho.style.display = 'none';
+        if (dadosCliente) dadosCliente.style.display = 'none';
+        return;
+      }
+      
+      carrinhoVazio.style.display = 'none';
+      totalCarrinho.style.display = 'block';
+      if (dadosCliente) dadosCliente.style.display = 'block';
+      
+      container.innerHTML = '';
+      let total = 0;
+      
+      Object.values(carrinho).forEach(item => {
+        const subtotal = item.preco * item.quantidade;
+        total += subtotal;
+        
+        const div = document.createElement('div');
+        div.className = 'item-carrinho';
+        div.innerHTML = `
+          <img src="${item.imagem}" alt="${item.nome}">
+          <div class="item-info">
+            <h4>${item.nome}</h4>
+            <p>${item.descricao}</p>
+          </div>
+          <div class="item-preco">
+            R$ ${subtotal.toFixed(2)}
+          </div>
+          <div class="controles-acao">
+            <div class="controles-quantidade">
+              <button class="btn-quantidade" title="Remover uma unidade" aria-label="Remover uma unidade" onclick="removerDoCarrinho('${item.nome}')">-</button>
+              <span class="quantidade-numero">${item.quantidade}</span>
+              <button class="btn-quantidade" title="Adicionar mais uma" aria-label="Adicionar mais uma" onclick="adicionarAoCarrinho('${item.nome}')">+</button>
+            </div>
+            <button class="btn-excluir" onclick="excluirDoCarrinho('${item.nome}')" title="Remover item">🗑️</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+      
+      document.getElementById('valorTotal').textContent = `R$ ${total.toFixed(2)}`;
+    }
+
+    function finalizarPedido() {
+      if (Object.keys(carrinho).length === 0) {
+        alert('Seu carrinho está vazio!');
+        return;
+      }
+
+      // Captura dados do cliente
+      const nome = (document.getElementById('clienteNome')?.value || '').trim();
+      const endereco = (document.getElementById('clienteEndereco')?.value || '').trim();
+      const bairro = (document.getElementById('clienteBairro')?.value || '').trim();
+      const numero = (document.getElementById('clienteNumero')?.value || '').trim();
+      const referencia = (document.getElementById('clienteReferencia')?.value || '').trim();
+      const cidade = (document.getElementById('clienteCidade')?.value || 'Guarujá').trim();
+      const pagamento = (document.querySelector('input[name="pagamento"]:checked')?.value || 'Não informado');
+
+      if (!nome || !endereco || !bairro || !numero) {
+        alert('Por favor, preencha Nome, Endereço, Bairro e Número.');
+        return;
+      }
+
+      const total = Object.values(carrinho).reduce((total, item) => total + (item.preco * item.quantidade), 0);
+      const totalItens = Object.values(carrinho).reduce((total, item) => total + item.quantidade, 0);
+      
+      let mensagem = `🍽️ *PEDIDO - CARDÁPIO COMPLETO*\n\n`;
+      mensagem += `📋 *ITENS SELECIONADOS:*\n`;
+      
+      Object.values(carrinho).forEach(item => {
+        const subtotal = item.preco * item.quantidade;
+        mensagem += `• ${item.nome} (x${item.quantidade}) - R$ ${subtotal.toFixed(2)}\n`;
+      });
+      
+      mensagem += `\n💰 *TOTAL DO PEDIDO: R$ ${total.toFixed(2)}*\n`;
+      mensagem += `📦 *Total de itens: ${totalItens}*\n\n`;
+      mensagem += `🧾 *Dados do cliente:*\n`;
+      mensagem += `• Nome: ${nome}\n`;
+      mensagem += `• Endereço: ${endereco}, Nº ${numero}\n`;
+      mensagem += `• Bairro: ${bairro}\n`;
+      mensagem += `• Cidade: ${cidade}\n`;
+      if (referencia) mensagem += `• Referência: ${referencia}\n`;
+      mensagem += `• Forma de pagamento na entrega!: ${pagamento}\n\n`;
+      mensagem += `📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
+      mensagem += `⏰ Hora: ${new Date().toLocaleTimeString('pt-BR')}\n\n`;
+      mensagem += `🙏 *Obrigado pela preferência!*\n`;
+      mensagem += `📞 Entre em contato para confirmar seu pedido.`;
+      
+      // Codifica a mensagem para WhatsApp
+      const mensagemCodificada = encodeURIComponent(mensagem);
+      const numeroWhatsapp = "5513996756517"; // Substitua pelo seu número
+      const url = `https://wa.me/${numeroWhatsapp}?text=${mensagemCodificada}`;
+      
+      // Abre WhatsApp
+      window.open(url, '_blank');
+      
+      // Limpa o carrinho
+      carrinho = {};
+      salvarCarrinho();
+      atualizarBadgeCarrinho();
+      fecharCarrinho();
+      // Remover o alert de confirmação para deixar o processo mais automático
+      // alert('Pedido enviado com sucesso! Verifique seu WhatsApp.');
+    }
+
+    // Fechar modal ao clicar fora dele
+    document.getElementById('modalCarrinho').addEventListener('click', function(e) {
+      if (e.target === this) {
+        fecharCarrinho();
+      }
+    });
+
+    function voltarAoTopo() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function alternarTema() {
+      const temaAtual = document.documentElement.getAttribute("data-tema");
+      const novoTema = temaAtual === "escuro" ? "claro" : "escuro";
+      document.documentElement.setAttribute("data-tema", novoTema);
+      localStorage.setItem("tema", novoTema);
+    }
+
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const termo = this.value.trim().toLowerCase();
+      const produtosDOM = document.querySelectorAll(".produto");
+
+      produtosDOM.forEach(function (produto) {
+        const textoProduto = produto.textContent.toLowerCase();
+        produto.style.display = termo === "" || textoProduto.includes(termo) ? "block" : "none";
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      try {
+        const temaSalvo = localStorage.getItem("tema") || "claro";
+        document.documentElement.setAttribute("data-tema", temaSalvo);
+        
+        // Renderiza todas as categorias
+        renderizarCardapio('pasteis');
+        renderizarCardapio('acompanhamentos');
+        renderizarCardapio('bebidas');
+        renderizarCardapio('bolos');
+        renderizarCardapio('acai');
+        renderizarCardapio('lanches');
+        
+        // Atualiza badge do carrinho
+        atualizarBadgeCarrinho();
+      } catch (erro) {
+        console.error('Erro ao inicializar a página:', erro);
+      }
+    });
+  </script>
+</body>
+</html> 
